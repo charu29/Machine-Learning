@@ -4,6 +4,8 @@ import math
 
 # Get the data set from quandl
 df = quandl.get('WIKI/GOOGL')
+
+# Extract only the relevant features
 df = df[['Adj. Open','Adj. High','Adj. Low','Adj. Close','Adj. Volume']]
 df['LH_PCT'] = (df['Adj. High'] - df['Adj. Low']) / df['Adj. Low']
 df['PCT'] = (df['Adj. Close'] - df['Adj. Open']) / df['Adj. Open']
