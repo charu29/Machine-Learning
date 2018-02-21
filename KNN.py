@@ -1,25 +1,75 @@
-import matplotlib.pyplot as plt
-from matplotlib import style
-from sklearn.cluster import KMeans
 import numpy as np
+from collections import Counter
+import warnings
+import random
+import pandas as pd
 
-X = np.array([[1, 2], [2, 3], [12, 12], [8, 9], [10, 11], [10, 10], [1, 3]])
 
-clf = KMeans(n_clusters=2)
-clf.fit(X)
+def k_nearest_neighbors(data, predict, k=5):
+    # If k is greater than total number of points in the dataset
+    if k > sum(len(v) for v in data.values()):
+        warnings.warn('K is set to a value more than total data points!')
+    distances = []
 
-centroids = clf.cluster_centers_
-labels = clf.labels_
+    for label in data:
+        for features in data[label]:
+            # Calculate the euclidean distance between all the features and prediction points
+            # euclidean_distance = np.sqrt(np.sum((np.array(features) - np.array(predict))**2))
+            euclidean_distance = np.linalg.norm(np.array(features) - np.array(predict))
 
-for i in range(len(centroids)):
-    print("centroids:", centroids[i][0], centroids[i][1])
+            # Append the distance with the label of the features
+            distances.append([euclidean_distance, label])
 
-for i in range(len(labels)):
-    print(labels[i])
+    votes = [i[1] for i in sorted(distances)[:k]]
+    # Find the most common label from the k closest points
+    vote_results = Counter(votes).most_common(1)[0][0]
 
-colors = ["r.", "b.", "k.", "g.", "c."]
-for i in range(len(X)):
-    plt.plot(X[i][0],X[i][1], colors[labels[i]], markersize = 15)
-plt.scatter(centroids[:, 0], centroids[:, 1], marker='x', s=100, linewidths=5)
-plt._show()
+    # Find the confidence of prediction
+    confidence = Counter(votes).most_common(1)[0][1] / k
+    return vote_results, confidence
 
+
+# Load the data set
+df = pd.read_csv('Datasets/Breast_cancer_wisconsin_data.txt')
+
+# Replace the unassigned values with -99999 and drop the id column
+df.replace('?', -99999, inplace=True)
+df.drop(['id'], 1, inplace=True)
+
+# Extract the data without the table headers in float format
+full_data = df.astype(float).values.tolist()
+random.shuffle(full_data)
+
+train_set = {2: [], 4: []}
+test_set = {2: [], 4: []}
+
+# Divide the data set into 80% training and 20% testing data
+test_size = 0.2
+train_data = full_data[:-int(test_size * len(full_data))]
+test_data = full_data[-int(test_size * len(full_data)):]
+
+# Append the training data into the dict train_set without the last column of labels
+for i in train_data:
+    train_set[i[-1]].append(i[:-1])
+
+# Append the testing data into the dict test_set without the last column of labels
+for i in test_data:
+    test_set[i[-1]].append(i[:-1])
+
+correct = 0
+total = 0
+
+for label in test_set:
+    for predict in test_set[label]:
+        vote, confidence = k_nearest_neighbors(train_set, predict, k=5)
+
+        # If prediction is correct
+        if vote == label:
+            correct += 1
+        # else print the confidence of the wrong prediction
+        else:
+            print(confidence)
+
+        total += 1
+
+print('Accuracy:', correct/total)
